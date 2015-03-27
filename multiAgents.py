@@ -11,6 +11,10 @@
 from util import manhattanDistance
 from game import Directions
 import random, util
+from searchAgents import mazeDistance
+import searchAgents
+from operator import itemgetter 
+from random import randint
 
 from game import Agent
 
@@ -79,7 +83,7 @@ class ReflexAgent(Agent):
             if ghostPos == newPos and ghostTime == 0:
                 return float("-inf")
        
-        if action == 'Stop':
+        if action == Directions.STOP:
             return float("-inf")
 
         for food in foodList:
@@ -258,32 +262,35 @@ def betterEvaluationFunction(currentGameState):
     score = currentGameState.getScore()
     ScaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
 
-    ghostDistance = float("inf")
-    nearestFoodDistance = float("-inf")
+    ghostDistance = []
     foodDistance = []
+    sumOffd = 0
 
-    ghostEval = 0
+    nearestFoodDistance = float("inf")
+    nearestGhostDistance = float("inf")
+
     for ghost in ghostStates:
-        ghostPos = (int(ghost.getPosition()[0]), int(ghost.getPosition()[1]))
-        dis = manhattanDistance(position, ghostPos)
+        ghostDistance.append(((int((ghost.getPosition()[0])),int((ghost.getPosition()[1]))), manhattanDistance(position, ghost.getPosition()), ghost.scaredTimer))
 
-        if ghost.scaredTimer == 0 and dis < ghostDistance:
-            ghostDistance = dis
-        else:
-            ghostEval += 200 - dis
-
-    if ghostDistance == float("inf"):
-        ghostDistance = 0
+    if len(ghostDistance) > 0:
+        nearestGhost = min(ghostDistance, key=itemgetter(1))
+        nearestGhostDistance = mazeDistance(nearestGhost[0], position, currentGameState)
+        if nearestGhostDistance < 2 and nearestGhost[2] == 0:
+            return float("-inf")
+        ghostWeight = nearestGhostDistance*(nearestGhostDistance/abs(nearestGhostDistance))
+    else:
+        ghostWeight = 0
 
     for food in foodList:
-        foodDistance.append(-(util.manhattanDistance(position, food)))
+        foodDistance.append((food, util.manhattanDistance(position, food)))
 
     if len(foodDistance) > 0:
-        nearestFoodDistance = max(foodDistance)
+        nearestFoodDistance = mazeDistance(max(foodDistance, key=itemgetter(1))[0], position,currentGameState)
+        sumOffd = sum(food[1] for food in foodDistance) + randint(0,1)
 
-    ghostEval += ghostDistance
 
-    return (score  - 10*nearestFoodDistance + 1*ghostEval)
+    return (score - sumOffd - 10*nearestFoodDistance + ghostWeight)
+
 
 # Abbreviation
 better = betterEvaluationFunction
