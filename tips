@@ -1,0 +1,3 @@
+Additional Tips for testing Assignment 2 of me:
+
+Since mazeDistance is used, it must be running under the support of search.py and searchAgents.py, which is the result of last assignment:)
