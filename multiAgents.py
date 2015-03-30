@@ -14,8 +14,7 @@ import random, util
 from searchAgents import mazeDistance
 import searchAgents
 from operator import itemgetter 
-from random import randint
-
+from operator import gt, lt
 from game import Agent
 
 class ReflexAgent(Agent):
@@ -105,6 +104,9 @@ def scoreEvaluationFunction(currentGameState):
     """
     return currentGameState.getScore()
 
+def ave(lst, key):
+    return None, sum(key(i) for i in lst)/float(len(lst))
+
 class MultiAgentSearchAgent(Agent):
     """
       This class provides some common elements to all of your
@@ -189,6 +191,34 @@ class MultiAgentSearchAgent(Agent):
 
         return val 
 
+    def generalAgent(self, currentGameState, depth, alpha, beta, method):
+        " Macro Representation "
+        ACTION, VALUE = itemgetter(0), itemgetter(1)
+
+        if depth == self.depth * currentGameState.getNumAgents() or currentGameState.isLose() or currentGameState.isWin():
+            return None, self.evaluationFunction(currentGameState)
+        agent = depth % currentGameState.getNumAgents()
+        " OP = Operator "
+        if method == "Expectimax":
+            if agent == 0:
+                OP = max 
+            else: 
+                OP = ave
+            return OP([(action, VALUE(self.generalAgent(currentGameState.generateSuccessor(agent, action), depth+1, alpha, beta, method)))
+               for action in currentGameState.getLegalActions(agent)], key=VALUE)
+        else:
+            OP = gt if agent == 0 else lt
+            action, value = None, float('-inf') if agent == 0 else float('inf')
+
+        for a in currentGameState.getLegalActions(agent):
+            _, v = self.generalAgent(currentGameState.generateSuccessor(agent, a), depth+1, alpha, beta, method)
+            action, value = (a, v) if OP(v, value) else (action, value)
+            alpha = max(alpha, value) if agent == 0 and method == "AlphaBetaPrune" else alpha  
+            beta = min(beta, value) if agent != 0 and method == "AlphaBetaPrune" else beta     
+            if alpha > beta and method == "AlphaBetaPrune":
+                break
+        return action, value
+
 class MinimaxAgent(MultiAgentSearchAgent):
     """
       Your minimax agent (question 2)
@@ -213,7 +243,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
 
-        return self.generalPacmanAgent(gameState, 0, 1, 0, 0, "Minimax")[1]
+        return self.generalAgent(gameState, 0, 0, 0, "Minimax")[0]
         util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -226,7 +256,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        return self.generalPacmanAgent(gameState, 0, 1, float("-inf"), float("inf"), "AlphaBetaPrune")[1]
+        return self.generalAgent(gameState, 0, float("-inf"), float("inf"), "AlphaBetaPrune")[0]
         util.raiseNotDefined()
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
@@ -242,7 +272,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           legal moves.
         """
         "*** YOUR CODE HERE ***"
-        return self.generalPacmanAgent(gameState, 0, 1, 0, 0, "Expectimax")[1]
+        return self.generalAgent(gameState, 0, 0, 0, "Expectimax")[0]
         util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState):
@@ -275,6 +305,7 @@ def betterEvaluationFunction(currentGameState):
     if currentGameState.isWin() or currentGameState.isLose():
         return currentGameState.getScore()
 
+    " Variables List"
     position = currentGameState.getPacmanPosition()
     capsules = currentGameState.getCapsules()
     numCapsules = len(capsules)
@@ -283,9 +314,24 @@ def betterEvaluationFunction(currentGameState):
     ghostDistance = []
     foodList = currentGameState.getFood().asList()
     foodDist, numFood = nearestItem(position, foodList, walls)
+    capsuleDistance = 0
+    capsuleCounter = 0
+    nearestGhostDistance = 0
+    ghostDistFeature = 0
+    foodDistance = 1.0 / foodDist
+    score = currentGameState.getScore()
+
+    " Feature Weight List "
+    capsuleDistWeight = 3
+    capsuleCountWeight = 20
+    ghostDistWeight = 40
+    foodDistWeight = 0.25
+    scoreWeight = 1.0
 
     for ghost in ghostStates:
-        ghostDistance.append(((int((ghost.getPosition()[0])),int((ghost.getPosition()[1]))), manhattanDistance(position, ghost.getPosition()), ghost.scaredTimer))
+        ghostDistance.append(((int((ghost.getPosition()[0])),int((ghost.getPosition()[1]))), 
+                                manhattanDistance(position, ghost.getPosition()), ghost.scaredTimer)
+                            )
 
     if len(ghostDistance) > 0:
         nearestGhost = min(ghostDistance, key=itemgetter(1))
@@ -293,33 +339,21 @@ def betterEvaluationFunction(currentGameState):
     else: 
         nearestGhostDistance = 100000
 
-    capsuleDistWeight = 3
-    capsuleCountWeight = 20
-    ghostDistWeight = 40
-    foodDistWeight = 0.25
-    gameScoreWeight = 1.0
-
-    capsuleDistFeature = 0
-    capsuleCountFeature = 0
-    ghostDistFeature = 0
-    foodDistFeature = 1.0 / foodDist
-    gameScoreFeature = currentGameState.getScore()
-
     if nearestGhost[2]:
         ghostDistFeature = 1.0 / nearestGhostDistance
         foodDistWeight = 0
-        gameScoreWeight = 0.99
+        scoreWeight = 0.99
     elif numCapsules:
-        capsuleCountFeature = -1
-        capsuleDist, numCapsules = nearestItem(position, capsules, walls)
-        capsuleDistFeature = 1.0 / capsuleDist
+        capsuleCounter = -1
+        capsuleDist, _ = nearestItem(position, capsules, walls)
+        capsuleDistance = 1.0 / capsuleDist
 
-    utility = (gameScoreWeight * gameScoreFeature +
-           capsuleDistWeight * capsuleDistFeature +
-           capsuleCountWeight * capsuleCountFeature +
-           ghostDistWeight * ghostDistFeature +
-           foodDistWeight * foodDistFeature)
-    return utility
+    utilityScore = (scoreWeight * score +
+                    capsuleDistWeight * capsuleDistance +
+                    capsuleCountWeight * capsuleCounter +
+                    ghostDistWeight * ghostDistFeature +
+                    foodDistWeight * foodDistance)
+    return utilityScore
 
 def nearestItem(position, items, walls):
     if not items:
@@ -347,6 +381,11 @@ class ContestAgent(MultiAgentSearchAgent):
       Your agent for the mini-contest
     """
 
+    def __init__(self, evalFn = 'betterEvaluationFunction', depth = '2'):
+        self.index = 0 # Pacman is always agent index 0
+        self.evaluationFunction = util.lookup(evalFn, globals())
+        self.depth = int(depth)
+
     def getAction(self, gameState):
         """
           Returns an action.  You can use any method you want and search to any depth you want.
@@ -358,14 +397,14 @@ class ContestAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         from operator import gt, lt
 
-        def alphabeta(state, alpha, beta, depth):
-            if depth == self.depth * state.getNumAgents() or state.isLose() or state.isWin():
-                return None, betterEvaluationFunction(state)
-            agent = depth % state.getNumAgents()
+        def alphabeta(currentGameState, depth, alpha, beta):
+            if depth == self.depth * currentGameState.getNumAgents() or currentGameState.isLose() or currentGameState.isWin():
+                return None, self.evaluationFunction(currentGameState)
+            agent = depth % currentGameState.getNumAgents()
             OP = gt if agent == 0 else lt
             action, value = None, float('-inf') if agent == 0 else float('inf')
-            for a in state.getLegalActions(agent):
-                _, v = alphabeta(state.generateSuccessor(agent, a), depth+1, alpha, beta)
+            for a in currentGameState.getLegalActions(agent):
+                _, v = alphabeta(currentGameState.generateSuccessor(agent, a), depth+1, alpha, beta)
                 action, value = (a, v) if OP(v, value) else (action, value)
                 alpha = max(alpha, value) if agent == 0 else alpha  
                 beta = min(beta, value) if agent != 0 else beta     
