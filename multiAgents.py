@@ -128,82 +128,18 @@ class MultiAgentSearchAgent(Agent):
         self.depth = int(depth)
 
     def terminalTest(self, currentGameState, depth):
-        return (currentGameState.isWin() or currentGameState.isLose())
-
-    def generalPacmanAgent(self, currentGameState, agentIndex, depth, alpha, beta, method):
-        if self.terminalTest(currentGameState,depth):
-            return self.evaluationFunction(currentGameState)
-
-        val = (float("-inf"),Directions.STOP)
-
-        for action in currentGameState.getLegalActions(agentIndex):
-            successor = currentGameState.generateSuccessor(agentIndex, action)
-            newVal = self.generalGhostAgent(successor, 1, depth, alpha, beta, method)
-            if type(newVal) == tuple:
-                newVal = newVal[0]
-
-            if newVal > beta and method == "AlphaBetaPrune":
-                return (newVal, action)
-
-            if newVal > val[0]:
-                val = (newVal, action)
-
-            if method == "AlphaBetaPrune":
-                alpha = max(alpha, val[0])
-
-        return val
-
-    def generalGhostAgent(self, currentGameState,agentIndex, depth, alpha, beta, method):
-        if self.terminalTest(currentGameState,depth):
-            return self.evaluationFunction(currentGameState)
-
-        val = (float("inf"), Directions.STOP)
-
-        if (method == "Expectimax"):
-            val = 0
-            prob = 1.0/len(currentGameState.getLegalActions(agentIndex))
-
-        for action in currentGameState.getLegalActions(agentIndex):
-            successor = currentGameState.generateSuccessor(agentIndex, action)
-            if agentIndex == currentGameState.getNumAgents() - 1:
-                if depth == self.depth:
-                    newVal = self.evaluationFunction(successor)
-                else:
-                    newVal = self.generalPacmanAgent(successor, 0, depth+1, alpha, beta, method)
-            else:
-                newVal = self.generalGhostAgent(successor,agentIndex+1, depth, alpha, beta, method)
-
-            if type(newVal) == tuple:
-                    newVal = newVal[0]
-
-            if newVal < alpha and method == "AlphaBetaPrune":
-                return (newVal, action)
-
-            if method != "Expectimax":
-                if  type(val) == tuple and newVal < val[0]:
-                        val = (newVal, action)
-
-            if method == "AlphaBetaPrune":
-                beta = min(beta, val[0])
-
-            if method == "Expectimax":
-                val += newVal * prob
-
-        return val 
+        return depth == self.depth * currentGameState.getNumAgents() or currentGameState.isWin() or currentGameState.isLose()
 
     def generalAgent(self, currentGameState, depth, alpha, beta, method):
         " Macro Representation "
         ACTION, VALUE = itemgetter(0), itemgetter(1)
 
-        if depth == self.depth * currentGameState.getNumAgents() or currentGameState.isLose() or currentGameState.isWin():
+        if self.terminalTest(currentGameState, depth):
             return None, self.evaluationFunction(currentGameState)
         agent = depth % currentGameState.getNumAgents()
         " OP = Operator "
         if method == "Expectimax":
-            if agent == 0:
-                OP = max 
-            else: 
-                OP = ave
+            OP = max if agent == 0 else ave
             return OP([(action, VALUE(self.generalAgent(currentGameState.generateSuccessor(agent, action), depth+1, alpha, beta, method)))
                for action in currentGameState.getLegalActions(agent)], key=VALUE)
         else:
