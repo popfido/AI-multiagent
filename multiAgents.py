@@ -107,6 +107,9 @@ def scoreEvaluationFunction(currentGameState):
 def ave(lst, key):
     return None, sum(key(i) for i in lst)/float(len(lst))
 
+" Macro Representation "
+ACTION, VALUE = itemgetter(0), itemgetter(1)
+
 class MultiAgentSearchAgent(Agent):
     """
       This class provides some common elements to all of your
@@ -131,8 +134,6 @@ class MultiAgentSearchAgent(Agent):
         return depth == self.depth * currentGameState.getNumAgents() or currentGameState.isWin() or currentGameState.isLose()
 
     def generalAgent(self, currentGameState, depth, alpha, beta, method):
-        " Macro Representation "
-        ACTION, VALUE = itemgetter(0), itemgetter(1)
 
         if self.terminalTest(currentGameState, depth):
             return None, self.evaluationFunction(currentGameState)
@@ -147,7 +148,7 @@ class MultiAgentSearchAgent(Agent):
             action, value = None, float('-inf') if agent == 0 else float('inf')
 
         for a in currentGameState.getLegalActions(agent):
-            _, v = self.generalAgent(currentGameState.generateSuccessor(agent, a), depth+1, alpha, beta, method)
+            v = VALUE(self.generalAgent(currentGameState.generateSuccessor(agent, a), depth+1, alpha, beta, method))
             action, value = (a, v) if OP(v, value) else (action, value)
             alpha = max(alpha, value) if agent == 0 and method == "AlphaBetaPrune" else alpha  
             beta = min(beta, value) if agent != 0 and method == "AlphaBetaPrune" else beta     
@@ -179,7 +180,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
 
-        return self.generalAgent(gameState, 0, 0, 0, "Minimax")[0]
+        return ACTION(self.generalAgent(gameState, 0, 0, 0, "Minimax"))
         util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -192,7 +193,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
           Returns the minimax action using self.depth and self.evaluationFunction
         """
         "*** YOUR CODE HERE ***"
-        return self.generalAgent(gameState, 0, float("-inf"), float("inf"), "AlphaBetaPrune")[0]
+        return ACTION(self.generalAgent(gameState, 0, float("-inf"), float("inf"), "AlphaBetaPrune"))
         util.raiseNotDefined()
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
@@ -208,7 +209,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           legal moves.
         """
         "*** YOUR CODE HERE ***"
-        return self.generalAgent(gameState, 0, 0, 0, "Expectimax")[0]
+        return ACTION(self.generalAgent(gameState, 0, 0, 0, "Expectimax"))
         util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState):
@@ -331,7 +332,7 @@ class ContestAgent(MultiAgentSearchAgent):
           just make a beeline straight towards Pacman (or away from him if they're scared!)
         """
         "*** YOUR CODE HERE ***"
-        
-        self.generalAgent(gameState, 0, float("-inf"), float("inf"), "AlphaBetaPrune")[0]
+
+        return ACTION(self.generalAgent(gameState, 0, float("-inf"), float("inf"), "AlphaBetaPrune"))
         
         util.raiseNotDefined()
