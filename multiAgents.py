@@ -331,24 +331,7 @@ class ContestAgent(MultiAgentSearchAgent):
           just make a beeline straight towards Pacman (or away from him if they're scared!)
         """
         "*** YOUR CODE HERE ***"
-        from operator import gt, lt
-
-        def alphabeta(currentGameState, depth, alpha, beta):
-            if depth == self.depth * currentGameState.getNumAgents() or currentGameState.isLose() or currentGameState.isWin():
-                return None, self.evaluationFunction(currentGameState)
-            agent = depth % currentGameState.getNumAgents()
-            OP = gt if agent == 0 else lt
-            action, value = None, float('-inf') if agent == 0 else float('inf')
-            for a in currentGameState.getLegalActions(agent):
-                _, v = alphabeta(currentGameState.generateSuccessor(agent, a), depth+1, alpha, beta)
-                action, value = (a, v) if OP(v, value) else (action, value)
-                alpha = max(alpha, value) if agent == 0 else alpha  
-                beta = min(beta, value) if agent != 0 else beta     
-                if alpha > beta:
-                    break
-            return action, value
-
-        action, _ = alphabeta(gameState, self.index, float('-inf'), float('inf'))
-        return action
+        
+        self.generalAgent(gameState, 0, float("-inf"), float("inf"), "AlphaBetaPrune")[0]
         
         util.raiseNotDefined()
