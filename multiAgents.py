@@ -88,11 +88,7 @@ class ReflexAgent(Agent):
         for food in foodList:
             distances.append(-(util.manhattanDistance(newPos, food))) # return positive value may cause loop?
             
-        if len(distances) > 0:
-            # print max(distances)
-            return max(distances)
-
-        return successorGameState.getScore()
+        return max(distances) if len(distances) > 0 else successorGameState.getScore()
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -134,7 +130,6 @@ class MultiAgentSearchAgent(Agent):
         return depth == self.depth * currentGameState.getNumAgents() or currentGameState.isWin() or currentGameState.isLose()
 
     def generalAgent(self, currentGameState, depth, alpha, beta, method):
-
         if self.terminalTest(currentGameState, depth):
             return None, self.evaluationFunction(currentGameState)
         agent = depth % currentGameState.getNumAgents()
